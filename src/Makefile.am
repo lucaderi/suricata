@@ -98,7 +98,6 @@ noinst_HEADERS = \
 	detect-bytejump.h \
 	detect-bytemath.h \
 	detect-bytetest.h \
-	detect-cipservice.h \
 	detect-classtype.h \
 	detect-config.h \
 	detect-content.h \
@@ -131,6 +130,7 @@ noinst_HEADERS = \
 	detect-engine-file.h \
 	detect-engine-frame.h \
 	detect-engine.h \
+	detect-engine-helper.h \
 	detect-engine-iponly.h \
 	detect-engine-loader.h \
 	detect-engine-mpm.h \
@@ -147,24 +147,6 @@ noinst_HEADERS = \
 	detect-engine-tag.h \
 	detect-engine-threshold.h \
 	detect-engine-uint.h \
-	detect-enip-command.h \
-	detect-enip-status.h \
-	detect-enip-product-name.h \
-	detect-enip-protocol-version.h \
-	detect-enip-cip-attribute.h \
-	detect-enip-cip-instance.h \
-	detect-enip-cip-class.h \
-	detect-enip-cip-extendedstatus.h \
-	detect-enip-cip-status.h \
-	detect-enip-service-name.h \
-	detect-enip-capabilities.h \
-	detect-enip-revision.h \
-	detect-enip-identity-status.h \
-	detect-enip-state.h \
-	detect-enip-serial.h \
-	detect-enip-product-code.h \
-	detect-enip-device-type.h \
-	detect-enip-vendor-id.h \
 	detect-fast-pattern.h \
 	detect-file-data.h \
 	detect-file-hash-common.h \
@@ -309,13 +291,6 @@ noinst_HEADERS = \
 	detect-smb-ntlmssp.h \
 	detect-smb-share.h \
 	detect-smb-version.h \
-	detect-snmp-community.h \
-	detect-snmp-pdu_type.h \
-	detect-snmp-usm.h \
-	detect-snmp-version.h \
-	detect-dhcp-leasetime.h \
-	detect-dhcp-rebinding-time.h \
-	detect-dhcp-renewal-time.h \
 	detect-ssh-hassh.h \
 	detect-ssh-hassh-server.h \
 	detect-ssh-hassh-server-string.h \
@@ -373,7 +348,6 @@ noinst_HEADERS = \
 	detect-urilen.h \
 	detect-within.h \
 	detect-xbits.h \
-	detect-websocket.h \
 	device-storage.h \
 	feature.h \
 	flow-bit.h \
@@ -725,7 +699,6 @@ libsuricata_c_a_SOURCES = \
 	detect-bytemath.c \
 	detect-bytetest.c \
 	detect.c \
-	detect-cipservice.c \
 	detect-classtype.c \
 	detect-config.c \
 	detect-content.c \
@@ -758,6 +731,7 @@ libsuricata_c_a_SOURCES = \
 	detect-engine-event.c \
 	detect-engine-file.c \
 	detect-engine-frame.c \
+	detect-engine-helper.c \
 	detect-engine-iponly.c \
 	detect-engine-loader.c \
 	detect-engine-mpm.c \
@@ -774,24 +748,6 @@ libsuricata_c_a_SOURCES = \
 	detect-engine-tag.c \
 	detect-engine-threshold.c \
 	detect-engine-uint.c \
-	detect-enip-command.c \
-	detect-enip-status.c \
-	detect-enip-product-name.c \
-	detect-enip-protocol-version.c \
-	detect-enip-cip-attribute.c \
-	detect-enip-cip-instance.c \
-	detect-enip-cip-class.c \
-	detect-enip-cip-extendedstatus.c \
-	detect-enip-cip-status.c \
-	detect-enip-service-name.c \
-	detect-enip-capabilities.c \
-	detect-enip-revision.c \
-	detect-enip-identity-status.c \
-	detect-enip-state.c \
-	detect-enip-serial.c \
-	detect-enip-product-code.c \
-	detect-enip-device-type.c \
-	detect-enip-vendor-id.c \
 	detect-fast-pattern.c \
 	detect-file-data.c \
 	detect-file-hash-common.c \
@@ -934,13 +890,6 @@ libsuricata_c_a_SOURCES = \
 	detect-smb-ntlmssp.c \
 	detect-smb-share.c \
 	detect-smb-version.c \
-	detect-snmp-community.c \
-	detect-snmp-pdu_type.c \
-	detect-snmp-usm.c \
-	detect-snmp-version.c \
-	detect-dhcp-leasetime.c \
-	detect-dhcp-rebinding-time.c \
-	detect-dhcp-renewal-time.c \
 	detect-ssh-hassh.c \
 	detect-ssh-hassh-server.c \
 	detect-ssh-hassh-server-string.c \
@@ -998,7 +947,6 @@ libsuricata_c_a_SOURCES = \
 	detect-urilen.c \
 	detect-within.c \
 	detect-xbits.c \
-	detect-websocket.c \
 	device-storage.c \
 	feature.c \
 	flow-bit.c \
@@ -1261,8 +1209,6 @@ EXTRA_DIST = \
 	tests/detect-http2.c \
 	tests/detect-icmpv6-mtu.c \
 	tests/detect-icmpv6hdr.c \
-	tests/detect-snmp-pdu_type.c \
-	tests/detect-snmp-version.c \
 	tests/detect-template.c \
 	tests/detect-transform-pcrexform.c \
 	tests/detect-transform-xor.c \
@@ -1320,7 +1266,13 @@ suricata_SOURCES = main.c
 
 # the library search path.
 suricata_LDFLAGS = $(all_libraries) ${SECLDFLAGS}
-suricata_LDADD = libsuricata_c.a $(RUST_SURICATA_LIB) $(HTP_LDADD) $(RUST_LDADD)
+# rust library depends also on c
+if LINKER_SUPPORTS_GROUP
+LDADD_GENERIC = "-Wl,--start-group,libsuricata_c.a,$(RUST_SURICATA_LIB),--end-group" $(HTP_LDADD) $(RUST_LDADD)
+else
+LDADD_GENERIC = libsuricata_c.a $(RUST_SURICATA_LIB) libsuricata_c.a $(RUST_SURICATA_LIB) $(HTP_LDADD) $(RUST_LDADD)
+endif
+suricata_LDADD = $(LDADD_GENERIC)
 suricata_DEPENDENCIES = libsuricata_c.a $(RUST_SURICATA_LIB)
 
 if BUILD_SHARED_LIBRARY
@@ -1356,7 +1308,7 @@ uninstall-local:
 if BUILD_FUZZTARGETS
 
 LDFLAGS_FUZZ = $(all_libraries) $(SECLDFLAGS)
-LDADD_FUZZ = libsuricata_c.a $(RUST_SURICATA_LIB) $(HTP_LDADD) $(RUST_LDADD)
+LDADD_FUZZ = $(LDADD_GENERIC)
 
 fuzz_applayerprotodetectgetproto_SOURCES = tests/fuzz/fuzz_applayerprotodetectgetproto.c
 fuzz_applayerprotodetectgetproto_LDFLAGS = $(LDFLAGS_FUZZ)
